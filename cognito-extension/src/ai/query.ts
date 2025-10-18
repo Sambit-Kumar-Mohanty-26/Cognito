@@ -1,4 +1,6 @@
 import type { ResearchCard } from "../types";
+import { getCards } from '../db';
+
 const MASTER_PROMPT = `You are a powerful semantic search and filtering engine for a user's private research notebook.
 I will provide a user's search query and a list of their saved research cards in a simplified JSON format.
 Your task is to analyze the user's intent and identify ONLY the cards that are the most direct and relevant answers to their query.
@@ -24,7 +26,9 @@ export async function queryCards(query: string, cards: ResearchCard[]): Promise<
     
     const ai: any = (window as any).ai;
     if (!ai || typeof ai.prompt !== 'function') {
-      throw new Error("Built-in AI is not available.");
+      // Fallback to a mock AI response if the built-in AI is not available
+      console.warn("Built-in AI is not available for querying. Using mock data.");
+      return cards; // Return all cards as a mock response
     }
 
     const fullPrompt = `${MASTER_PROMPT}\n\nUser Query: "${query}"\n\nResearch Cards JSON:\n${JSON.stringify(simplifiedCards, null, 2)}`;
@@ -44,6 +48,18 @@ export async function queryCards(query: string, cards: ResearchCard[]): Promise<
 
   } catch (error) {
     console.error("Card query failed:", error);
+    return [];
+  }
+}
+
+export async function queryCardsFromDB(query: string): Promise<ResearchCard[]> {
+  try {
+    const allCards = await getCards();
+    const filteredCards = await queryCards(query, allCards);
+    console.log(`Query for "${query}" completed.`);
+    return filteredCards;
+  } catch (error) {
+    console.error(`Failed to query cards from DB for "${query}":`, error);
     return [];
   }
 }
