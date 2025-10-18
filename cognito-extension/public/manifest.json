@@ -1,8 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Cognito",
-  "version": "0.1",
-  "permissions": ["sidePanel"],
+  "version": "0.1.0",
+  "permissions": [
+    "sidePanel",
+    "contextMenus",
+    "scripting",
+    "tabs" 
+  ],
   "action": {
     "default_title": "Open Cognito"
   },
