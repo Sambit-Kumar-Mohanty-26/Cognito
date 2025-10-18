@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist",
+    "target": "ES2020",
+    "module": "ESNext",
+    "types": ["chrome"]
+  },
+  "include": ["src/background.ts", "src/db/index.ts", "src/types/index.ts"]
+}

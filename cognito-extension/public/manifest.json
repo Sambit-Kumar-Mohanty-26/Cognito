@@ -1,20 +1,30 @@
 {
   "manifest_version": 3,
-  "name": "Cognito",
+  "name": "Cognito: Private Research Co-pilot",
   "version": "0.1.0",
+  "description": "Your on-device AI co-pilot for research and tab management.",
+  
   "permissions": [
+    "tabs", 
+    "contextMenus", 
     "sidePanel",
-    "contextMenus",
     "scripting",
-    "tabs" 
+    "storage"
   ],
-  "action": {
-    "default_title": "Open Cognito"
+
+  "host_permissions": [
+    "<all_urls>"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
   },
+
   "side_panel": {
     "default_path": "index.html"
   },
-  "background": {
-    "service_worker": "background.js"
+
+  "action": {
+    "default_title": "Open Cognito Side Panel"
   }
 }
