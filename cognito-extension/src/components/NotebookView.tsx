@@ -1,4 +1,4 @@
-import React from 'react';
+import { ResearchCard } from './ResearchCard';
 
 export const NotebookView = () => {
   return (
@@ -7,19 +7,15 @@ export const NotebookView = () => {
       <h1 className="text-xl font-bold text-slate-800">Cognito Notebook</h1>
 
       {/* This will eventually be a dynamic <ResearchCard> component */}
-      <div className="bg-white p-3 my-4 rounded-lg shadow-md border border-slate-200">
-        <h2 className="font-bold text-slate-800">This is a Saved Note</h2>
-        <p className="text-slate-600 mt-2 text-sm">
-          An AI-generated summary will appear here once the backend is connected.
-        </p>
-      </div>
+      <ResearchCard
+        title="This is a Saved Note"
+        summary="An AI-generated summary will appear here once the backend is connected."
+      />
 
-      <div className="bg-white p-3 my-4 rounded-lg shadow-md border border-slate-200">
-        <h2 className="font-bold text-slate-800">Another Saved Note</h2>
-        <p className="text-slate-600 mt-2 text-sm">
-          You can create multiple cards to design the layout.
-        </p>
-      </div>
+      <ResearchCard
+        title="Another Saved Note"
+        summary="You can create multiple cards to design the layout."
+      />
     </div>
   );
 };

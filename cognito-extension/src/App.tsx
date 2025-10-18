@@ -1,35 +1,36 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import { NotebookView } from './components/NotebookView';
+import { DashboardView } from './components/DashboardView';
+import { WritingStudioView } from './components/WritingStudioView';
+import { Navigation } from './components/Navigation';
+import './App.css';
+
+type View = 'Notebook' | 'Dashboard' | 'WritingStudio';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentView, setCurrentView] = useState<View>('Notebook');
+
+  const renderView = () => {
+    switch (currentView) {
+      case 'Notebook':
+        return <NotebookView />;
+      case 'Dashboard':
+        return <DashboardView />;
+      case 'WritingStudio':
+        return <WritingStudioView />;
+      default:
+        return <NotebookView />;
+    }
+  };
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <Navigation currentView={currentView} onViewChange={setCurrentView} />
+      <div className="p-4">
+        {renderView()}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
-  )
+  );
 }
 
 export default App
