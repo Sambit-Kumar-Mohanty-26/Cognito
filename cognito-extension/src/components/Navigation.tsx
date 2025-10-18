@@ -1,13 +1,10 @@
 import type { View } from '../types';
-
-// Define the component's props using the imported View type.
 interface NavigationProps {
   currentView: View;
   onViewChange: (view: View) => void;
 }
 
 export const Navigation = ({ currentView, onViewChange }: NavigationProps) => {
-  // Basic button styling for now. Rudra can make this beautiful later.
   const baseButtonClass = "px-3 py-1 rounded-md text-sm font-medium";
   const activeButonClass = "bg-slate-800 text-white";
   const inactiveButtonClass = "text-slate-600 hover:bg-slate-300";
@@ -36,7 +33,6 @@ export const Navigation = ({ currentView, onViewChange }: NavigationProps) => {
         Writing Studio
       </button>
       
-      {/* This button is for you, Sambit! */}
       <button 
         onClick={() => onViewChange('Dev')} 
         className={`${baseButtonClass} ${currentView === 'Dev' ? activeButonClass : inactiveButtonClass} ml-auto border border-slate-400`}

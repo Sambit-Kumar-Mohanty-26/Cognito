@@ -1,5 +1,3 @@
-// src/ai/tagging.ts
-
 const MASTER_PROMPT = `You are a highly intelligent content analysis engine. Your task is to extract the most relevant keywords and concepts from the provided text to be used as organizational tags.
 
 Follow these rules strictly:
@@ -10,13 +8,6 @@ Follow these rules strictly:
 5.  Return the tags as a single, comma-separated string ONLY. Example: "AI, Gemini Nano, On-Device AI, Web Development".
 6.  Do not add any preamble, explanation, or other text. Only return the comma-separated list.`;
 
-// The generateTagsForContent function remains the same.
-
-/**
- * Generates a list of keyword tags for a given block of text content.
- * @param content The text to analyze.
- * @returns A promise that resolves to an array of string tags.
- */
 export async function generateTagsForContent(content: string): Promise<string[]> {
   try {
     const ai: any = (window as any).ai;
@@ -25,17 +16,16 @@ export async function generateTagsForContent(content: string): Promise<string[]>
     }
 
     const resultString: string = await ai.prompt(`${MASTER_PROMPT}\n\nText to analyze:\n"""\n${content}\n"""`);
-    
-    // Parse the result string into an array
+
     if (!resultString) return [];
     
     return resultString
       .split(',')
       .map(tag => tag.trim())
-      .filter(tag => tag.length > 0); // Filter out any empty tags
+      .filter(tag => tag.length > 0); 
 
   } catch (error) {
     console.error("Tag generation failed:", error);
-    return []; // Return an empty array on failure
+    return []; 
   }
 }

@@ -1,20 +1,14 @@
-// src/App.tsx (The New, Unified Version)
-
 import { useState } from 'react';
 import { NotebookView } from './components/NotebookView';
 import { DashboardView } from './components/DashboardView';
 import { WritingStudioView } from './components/WritingStudioView';
 import { Navigation } from './components/Navigation';
 import './App.css';
-
-// --- Sambit's Test Harness Component ---
-// We've moved your entire test harness into its own component.
 import { analyzeImageProvenance } from './ai/provenance';
 import { generateTagsForContent } from './ai/tagging';
 import { queryCards } from './ai/query';
 import type { ProvenanceResult, ResearchCard, View } from './types';
 
-// Mock data remains here for the test harness
 const mockCards: ResearchCard[] = [
   { id: 1, type: 'text', content: 'The latest report shows a 15% increase in Q3 revenue, driven by the new "Phoenix" project.', sourceUrl: 'http://example.com', createdAt: Date.now(), summary: '15% Q3 revenue increase from Phoenix project.', tags: ['finance', 'revenue', 'phoenix project'] },
   { id: 2, type: 'image', content: new Blob(), sourceUrl: 'http://example.com', createdAt: Date.now() - 10000, summary: 'Chart showing user engagement over time.', tags: ['data', 'user engagement', 'chart'] },
@@ -22,7 +16,6 @@ const mockCards: ResearchCard[] = [
 ];
 
 const SambitTestHarness = () => {
-    // All your state and handlers from your test file are now safely inside this component.
     const [provResult, setProvResult] = useState<ProvenanceResult | null>(null);
     const [isProvLoading, setIsProvLoading] = useState(false);
     const [tagContent, setTagContent] = useState('Chrome\'s new built-in AI, including models like Gemini Nano, allows developers to build privacy-preserving features directly into their web applications.');
@@ -79,7 +72,6 @@ const SambitTestHarness = () => {
         </div>
     );
 };
-// --- End of Sambit's Test Harness Component ---
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('Notebook');
@@ -92,7 +84,7 @@ function App() {
         return <DashboardView />;
       case 'WritingStudio':
         return <WritingStudioView />;
-      case 'Dev': // New case for your test harness
+      case 'Dev':
         return <SambitTestHarness />;
       default:
         return <NotebookView />;
@@ -101,7 +93,6 @@ function App() {
 
   return (
     <>
-      {/* We assume the Navigation component will have a button to switch to the 'Dev' view */}
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
       <div className="p-4">
         {renderView()}

@@ -1,5 +1,3 @@
-// src/ai/provenance.ts
-
 import type { ProvenanceResult, ProvenanceStatus } from '../types';
 
 const MASTER_PROMPT = `You are a world-class digital image forensic analyst. Your task is to analyze the provided image for any signs of digital alteration or AI generation. Be objective, technical, and precise.
@@ -22,11 +20,6 @@ Forensic Findings:
 - Shadows cast by the subject and the tree in the background are inconsistent with a single light source.
 - The texture of the brick wall behind the subject appears unnaturally smooth and lacks realistic detail.`;
 
-/**
- * Analyzes an image blob for signs of manipulation using the built-in AI.
- * @param imageBlob The image data to analyze.
- * @returns A promise that resolves to a ProvenanceResult object.
- */
 export async function analyzeImageProvenance(imageBlob: Blob): Promise<ProvenanceResult> {
   try {
     const ai: any = (window as any).ai;
@@ -35,11 +28,8 @@ export async function analyzeImageProvenance(imageBlob: Blob): Promise<Provenanc
     }
 
     const resultString: string = await ai.prompt(MASTER_PROMPT, { image: imageBlob });
-    
-    // --- PARSING LOGIC START ---
     const parts = resultString.split('---');
     if (parts.length < 2) {
-      // Fallback if the AI didn't follow the format
       return { status: 'unverified', findings: "AI response was not in the expected format.\n\n" + resultString };
     }
 
@@ -56,7 +46,6 @@ export async function analyzeImageProvenance(imageBlob: Blob): Promise<Provenanc
     }
 
     return { status, findings };
-    // --- PARSING LOGIC END ---
 
   } catch (error) {
     console.error("Provenance analysis failed:", error);
