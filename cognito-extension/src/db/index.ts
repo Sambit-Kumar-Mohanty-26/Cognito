@@ -26,13 +26,19 @@ async function initDB() {
   return db;
 }
 
-export async function addCard(card: Omit<ResearchCard, 'id'>): Promise<void> {
+export async function addCard(card: Omit<ResearchCard, 'id'>): Promise<number> {
   const db = await initDB();
-  await db.add(STORE_NAME, card as ResearchCard);
+  const id = await db.add(STORE_NAME, card as ResearchCard);
+  return id;
 }
 export async function getCards(): Promise<ResearchCard[]> {
   const db = await initDB();
   return await db.getAllFromIndex(STORE_NAME, 'createdAt');
+}
+
+export async function getCard(id: number): Promise<ResearchCard | undefined> {
+  const db = await initDB();
+  return await db.get(STORE_NAME, id);
 }
 
 export async function deleteCard(id: number): Promise<void> {
@@ -43,4 +49,10 @@ export async function deleteCard(id: number): Promise<void> {
 export async function updateCard(card: ResearchCard): Promise<void> {
   const db = await initDB();
   await db.put(STORE_NAME, card);
+}
+
+export async function clearAllCards(): Promise<void> {
+  const db = await openDB(DB_NAME, DB_VERSION);
+  await db.clear(STORE_NAME);
+  db.close();
 }
