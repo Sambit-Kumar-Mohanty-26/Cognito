@@ -20,3 +20,4 @@ export interface ResearchCard {
   tags: string[]; 
   provenance?: ProvenanceResult; 
 }
+export type View = 'Notebook' | 'Dashboard' | 'WritingStudio' | 'Dev';

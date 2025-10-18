@@ -1,3 +1,6 @@
+// src/components/ResearchCard.tsx
+import React from 'react';
+
 interface ResearchCardProps {
   title: string;
   summary: string;

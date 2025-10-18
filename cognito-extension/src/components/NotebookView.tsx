@@ -1,3 +1,4 @@
+
 import { ResearchCard } from './ResearchCard';
 
 export const NotebookView = () => {
@@ -6,7 +7,7 @@ export const NotebookView = () => {
     <div className="bg-slate-100 p-4 font-sans">
       <h1 className="text-xl font-bold text-slate-800">Cognito Notebook</h1>
 
-      {/* This will eventually be a dynamic <ResearchCard> component */}
+      {/* This will eventually be a dynamic list of cards from the database */}
       <ResearchCard
         title="This is a Saved Note"
         summary="An AI-generated summary will appear here once the backend is connected."
