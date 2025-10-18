@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Cognito",
+  "version": "0.1",
+  "permissions": ["sidePanel"],
+  "action": {
+    "default_title": "Open Cognito"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
