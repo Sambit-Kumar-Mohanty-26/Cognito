@@ -4,18 +4,22 @@ import { DashboardView } from './components/DashboardView';
 import { WritingStudioView } from './components/WritingStudioView';
 import { Navigation } from './components/Navigation';
 import './App.css';
-import { analyzeImageProvenance } from './ai/provenance';
-import { generateTagsForContent } from './ai/tagging';
-import { queryCards } from './ai/query';
+import { analyzeImageProvenanceWithDB } from './ai/provenance';
+import { generateTagsForContentWithDB } from './ai/tagging';
+import { queryCardsFromDB } from './ai/query';
 import type { ProvenanceResult, ResearchCard, View } from './types';
+import { addCard, getCards, clearAllCards } from './db';
+import { useEffect } from 'react';
 
-const mockCards: ResearchCard[] = [
-  { id: 1, type: 'text', content: 'The latest report shows a 15% increase in Q3 revenue, driven by the new "Phoenix" project.', sourceUrl: 'http://example.com', createdAt: Date.now(), summary: '15% Q3 revenue increase from Phoenix project.', tags: ['finance', 'revenue', 'phoenix project'] },
-  { id: 2, type: 'image', content: new Blob(), sourceUrl: 'http://example.com', createdAt: Date.now() - 10000, summary: 'Chart showing user engagement over time.', tags: ['data', 'user engagement', 'chart'] },
-  { id: 3, type: 'text', content: 'Client feedback has been overwhelmingly positive regarding the new UI/UX update. Key themes include "intuitive" and "responsive".', sourceUrl: 'http://example.com', createdAt: Date.now() - 20000, summary: 'Positive client feedback on UI/UX update.', tags: ['ux', 'feedback', 'design'] },
-];
+// Define the props for SambitTestHarness
+interface SambitTestHarnessProps {
+  allCards: ResearchCard[];
+  setAllCards: (cards: ResearchCard[]) => void;
+  textCardId: number | undefined;
+  imageCardId: number | undefined;
+}
 
-const SambitTestHarness = () => {
+const SambitTestHarness: React.FC<SambitTestHarnessProps> = ({ allCards, setAllCards, textCardId, imageCardId }) => {
     const [provResult, setProvResult] = useState<ProvenanceResult | null>(null);
     const [isProvLoading, setIsProvLoading] = useState(false);
     const [tagContent, setTagContent] = useState('Chrome\'s new built-in AI, including models like Gemini Nano, allows developers to build privacy-preserving features directly into their web applications.');
@@ -29,20 +33,35 @@ const SambitTestHarness = () => {
         const file = event.target.files?.[0];
         if (file) {
             setIsProvLoading(true); setProvResult(null);
-            const analysisResult = await analyzeImageProvenance(file);
-            setProvResult(analysisResult);
+            if (imageCardId === undefined) {
+                console.error("Image card ID is not available for provenance analysis.");
+                setIsProvLoading(false);
+                return;
+            }
+            await analyzeImageProvenanceWithDB(imageCardId);
+            const updatedCard = allCards.find(card => card.id === imageCardId);
+            setProvResult(updatedCard?.provenance || null);
             setIsProvLoading(false);
+            setAllCards(await getCards()); // Refresh allCards in parent App component
         }
     };
     const handleGenerateTags = async () => {
         setIsTagLoading(true); setGeneratedTags([]);
-        const tags = await generateTagsForContent(tagContent);
-        setGeneratedTags(tags);
+        if (textCardId === undefined) {
+            console.error("Text card ID is not available for tag generation.");
+            setIsTagLoading(false);
+            return;
+        }
+        await generateTagsForContentWithDB(textCardId);
+        const refreshedCards = await getCards();
+        setAllCards(refreshedCards); // Refresh allCards in parent App component
+        const updatedCard = refreshedCards.find(card => card.id === textCardId);
+        setGeneratedTags(updatedCard?.tags || []);
         setIsTagLoading(false);
     };
     const handleQueryCards = async () => {
         setIsQueryLoading(true); setFilteredCards([]);
-        const resultCards = await queryCards(query, mockCards);
+        const resultCards = await queryCardsFromDB(query);
         setFilteredCards(resultCards);
         setIsQueryLoading(false);
     };
@@ -67,14 +86,39 @@ const SambitTestHarness = () => {
             <h3>Query Results:</h3>
             {isQueryLoading && <p>Finding relevant cards...</p>}
             {filteredCards.length > 0 ? <pre>{JSON.stringify(filteredCards, null, 2)}</pre> : <p>No relevant cards found.</p>}
-            <h3>Original Mock Data:</h3>
-            <pre style={{ background: '#f0f0f0', padding: '1rem', whiteSpace: 'pre-wrap' }}>{JSON.stringify(mockCards, null, 2)}</pre>
+            <h3>Original Mock Data in DB:</h3>
+            <pre style={{ background: '#f0f0f0', padding: '1rem', whiteSpace: 'pre-wrap' }}>{JSON.stringify(allCards, null, 2)}</pre>
         </div>
     );
 };
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('Notebook');
+  const [allCards, setAllCards] = useState<ResearchCard[]>([]);
+  const [textCardId, setTextCardId] = useState<number | undefined>(undefined);
+  const [imageCardId, setImageCardId] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const loadInitialMockData = async () => {
+      // Always clear and add fresh mock data during development to ensure consistent state.
+      await clearAllCards();
+      setTextCardId(await addCard({ type: 'text', content: 'The latest report shows a 15% increase in Q3 revenue, driven by the new "Phoenix" project.', sourceUrl: 'http://example.com', createdAt: Date.now(), summary: '15% Q3 revenue increase from Phoenix project.', tags: ['finance', 'revenue', 'phoenix project'] }));
+      setImageCardId(await addCard({
+          type: 'image',
+          content: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAHBJREFUOE9jZGBg+M/AIAQQFgIwYGZgFGP+HwygYBSLgBSGAoYBAxkgCIMmBAMAAAEwWwO5/0u7AAAAAElFTkSuQmCC', // 64x64 grey square
+          sourceUrl: 'http://example.com',
+          createdAt: Date.now() - 10000,
+          summary: 'Chart showing user engagement over time.',
+          tags: ['data', 'user engagement', 'chart'],
+        }));
+      await addCard({ type: 'text', content: 'Client feedback has been overwhelmingly positive regarding the new UI/UX update. Key themes include "intuitive" and "responsive".', sourceUrl: 'http://example.com', createdAt: Date.now() - 20000, summary: 'Positive client feedback on UI/UX update.', tags: ['ux', 'feedback', 'design'] });
+
+      // Load all cards after mock data setup
+      setAllCards(await getCards());
+    };
+    
+    loadInitialMockData();
+  }, []); // Run only once on component mount
 
   const renderView = () => {
     switch (currentView) {
@@ -85,7 +129,7 @@ function App() {
       case 'WritingStudio':
         return <WritingStudioView />;
       case 'Dev':
-        return <SambitTestHarness />;
+        return <SambitTestHarness allCards={allCards} setAllCards={setAllCards} textCardId={textCardId} imageCardId={imageCardId} />;
       default:
         return <NotebookView />;
     }
