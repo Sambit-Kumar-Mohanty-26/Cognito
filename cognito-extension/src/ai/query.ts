@@ -14,26 +14,26 @@ You must adhere to the following rules without exception:
 
 export async function queryCards(query: string, cards: ResearchCard[]): Promise<ResearchCard[]> {
   try {
+    if (cards.length === 0) return [];
+    if (!window.ai || (await window.ai.canCreateTextSession()) === 'no') {
+      console.warn("Built-in AI is not available for querying. Performing simple text search.");
+      return cards.filter(card => JSON.stringify(card).toLowerCase().includes(query.toLowerCase()));
+    }
+
     const simplifiedCards = cards.map(card => ({
       id: card.id,
-      type: card.type,
       summary: card.summary,
       tags: card.tags,
       contentSnippet: card.type === 'text' && typeof card.content === 'string' 
         ? card.content.substring(0, 100) 
         : '',
     }));
-    
-    const ai: any = (window as any).ai;
-    if (!ai || typeof ai.prompt !== 'function') {
-      // Fallback to a mock AI response if the built-in AI is not available
-      console.warn("Built-in AI is not available for querying. Using mock data.");
-      return cards; // Return all cards as a mock response
-    }
 
     const fullPrompt = `${MASTER_PROMPT}\n\nUser Query: "${query}"\n\nResearch Cards JSON:\n${JSON.stringify(simplifiedCards, null, 2)}`;
     
-    const resultString: string = await ai.prompt(fullPrompt);
+    const session = await window.ai.createTextSession();
+    const resultString = await session.prompt(fullPrompt);
+    session.destroy();
 
     if (!resultString) return [];
 

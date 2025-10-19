@@ -10,8 +10,8 @@ import { queryCardsFromDB } from './ai/query';
 import type { ProvenanceResult, ResearchCard, View } from './types';
 import { addCard, getCards, clearAllCards } from './db';
 import { useEffect } from 'react';
+import { handleClippedContent } from './handlers/content-handler';
 
-// Define the props for SambitTestHarness
 interface SambitTestHarnessProps {
   allCards: ResearchCard[];
   setAllCards: (cards: ResearchCard[]) => void;
@@ -42,7 +42,7 @@ const SambitTestHarness: React.FC<SambitTestHarnessProps> = ({ allCards, setAllC
             const updatedCard = allCards.find(card => card.id === imageCardId);
             setProvResult(updatedCard?.provenance || null);
             setIsProvLoading(false);
-            setAllCards(await getCards()); // Refresh allCards in parent App component
+            setAllCards(await getCards());
         }
     };
     const handleGenerateTags = async () => {
@@ -54,7 +54,7 @@ const SambitTestHarness: React.FC<SambitTestHarnessProps> = ({ allCards, setAllC
         }
         await generateTagsForContentWithDB(textCardId);
         const refreshedCards = await getCards();
-        setAllCards(refreshedCards); // Refresh allCards in parent App component
+        setAllCards(refreshedCards);
         const updatedCard = refreshedCards.find(card => card.id === textCardId);
         setGeneratedTags(updatedCard?.tags || []);
         setIsTagLoading(false);
@@ -100,7 +100,6 @@ function App() {
 
   useEffect(() => {
     const loadInitialMockData = async () => {
-      // Always clear and add fresh mock data during development to ensure consistent state.
       await clearAllCards();
       setTextCardId(await addCard({ type: 'text', content: 'The latest report shows a 15% increase in Q3 revenue, driven by the new "Phoenix" project.', sourceUrl: 'http://example.com', createdAt: Date.now(), summary: '15% Q3 revenue increase from Phoenix project.', tags: ['finance', 'revenue', 'phoenix project'] }));
       setImageCardId(await addCard({
@@ -113,13 +112,28 @@ function App() {
         }));
       await addCard({ type: 'text', content: 'Client feedback has been overwhelmingly positive regarding the new UI/UX update. Key themes include "intuitive" and "responsive".', sourceUrl: 'http://example.com', createdAt: Date.now() - 20000, summary: 'Positive client feedback on UI/UX update.', tags: ['ux', 'feedback', 'design'] });
 
-      // Load all cards after mock data setup
       setAllCards(await getCards());
     };
     
     loadInitialMockData();
-  }, []); // Run only once on component mount
+  }, []); 
 
+  useEffect(() => {
+    const messageListener = (message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
+      if (message.type === 'SAVE_CLIPPED_CONTENT') {
+        console.log("Received SAVE_CLIPPED_CONTENT message:", message.payload);
+        handleClippedContent(message.payload).then(() => {
+          getCards().then(setAllCards);
+        });
+        sendResponse({ status: 'processing' });
+        return true; 
+      }
+    };
+    chrome.runtime.onMessage.addListener(messageListener);
+    return () => {
+      chrome.runtime.onMessage.removeListener(messageListener);
+    };
+  }, []); 
   const renderView = () => {
     switch (currentView) {
       case 'Notebook':

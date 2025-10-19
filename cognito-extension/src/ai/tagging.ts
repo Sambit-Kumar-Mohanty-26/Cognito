@@ -13,14 +13,14 @@ Follow these rules strictly:
 
 export async function generateTagsForContent(content: string): Promise<string[]> {
   try {
-    const ai: any = (window as any).ai;
-    if (!ai || typeof ai.prompt !== 'function') {
-      // Fallback to a mock AI response if the built-in AI is not available
+    if (!window.ai || (await window.ai.canCreateTextSession()) === 'no') {
       console.warn("Built-in AI is not available for tagging. Using mock data.");
-      return ['mock', 'tag1', 'tag2'];
+      return ['mock-tag', 'placeholder'];
     }
 
-    const resultString: string = await ai.prompt(`${MASTER_PROMPT}\n\nText to analyze:\n"""\n${content}\n"""`);
+    const session = await window.ai.createTextSession();
+    const resultString = await session.prompt(`${MASTER_PROMPT}\n\nText to analyze:\n"""\n${content}\n"""`);
+    session.destroy();
 
     if (!resultString) return [];
     
