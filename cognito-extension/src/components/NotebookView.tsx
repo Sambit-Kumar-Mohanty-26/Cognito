@@ -1,38 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getCards } from '../db';
 import type { ResearchCard as ResearchCardType } from '../types';
 import { ResearchCardComponent } from './ResearchCard';
 
-export const NotebookView = () => {
-  const [cards, setCards] = useState<ResearchCardType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface NotebookViewProps {
+  allCards: ResearchCardType[];
+  setAllCards: React.Dispatch<React.SetStateAction<ResearchCardType[]>>; // Update type here
+}
 
-  const loadCards = async () => {
-    if (cards.length === 0) setIsLoading(true);
-    setError(null);
-    try {
-      const savedCards = await getCards();
-      setCards(savedCards);
-    } catch (err) {
-      console.error("Failed to load cards:", err);
-      setError("Failed to load research cards.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+export const NotebookView: React.FC<NotebookViewProps> = ({ allCards, setAllCards }) => {
+  const [isLoading, setIsLoading] = useState(false); // Initialize as false, data comes from props
 
-  useEffect(() => {
-    loadCards();
-  }, []); 
+  // The allCards prop is the source of truth, so we don't need a local 'cards' state.
+  // We also don't need a useEffect to set local state from props if we're rendering directly from props.
 
   const handleCardDelete = (deletedId: number) => {
-    setCards(currentCards => currentCards.filter(card => card.id !== deletedId));
+    setAllCards((currentCards: ResearchCardType[]) => currentCards.filter((card: ResearchCardType) => card.id !== deletedId));
   };
 
   const handleCardUpdate = async () => {
-    await loadCards();
+    setIsLoading(true);
+    try {
+      const updatedCards = await getCards();
+      setAllCards(updatedCards);
+    } catch (error) {
+      console.error("Failed to refresh cards:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -44,7 +40,15 @@ export const NotebookView = () => {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold text-slate-800">Cognito Notebook</h1>
         <button
-          onClick={loadCards}
+          onClick={() => setAllCards([])} // Clear all cards button
+          className="text-slate-500 hover:text-slate-800 transition-colors p-1"
+          title="Clear All Cards"
+          disabled={isLoading}
+        >
+          Clear All
+        </button>
+        <button
+          onClick={handleCardUpdate} // Refresh button
           className="text-slate-500 hover:text-slate-800 transition-colors p-1"
           title="Refresh Cards"
           disabled={isLoading}
@@ -60,17 +64,12 @@ export const NotebookView = () => {
           <p className="text-slate-600">Loading research cards...</p>
         </div>
       )}
-      {error && (
-        <div className="flex justify-center items-center h-64">
-          <p className="text-red-500">Error: {error}</p>
-        </div>
-      )}
-
-      {!isLoading && !error && (
+      
+      {!isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
           <AnimatePresence>
-            {cards.length > 0 ? (
-              cards.map((card) => (
+            {allCards.length > 0 ? (
+              allCards.map((card) => (
                 <ResearchCardComponent
                   key={card.id}
                   card={card}

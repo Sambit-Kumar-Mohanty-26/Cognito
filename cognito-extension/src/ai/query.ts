@@ -1,6 +1,9 @@
 import type { ResearchCard } from "../types";
 import { getCards } from '../db';
 
+// Declare LanguageModel as a global type if not already declared
+declare const LanguageModel: any;
+
 const MASTER_PROMPT = `You are a powerful semantic search and filtering engine for a user's private research notebook.
 I will provide a user's search query and a list of their saved research cards in a simplified JSON format.
 Your task is to analyze the user's intent and identify ONLY the cards that are the most direct and relevant answers to their query.
@@ -15,7 +18,10 @@ You must adhere to the following rules without exception:
 export async function queryCards(query: string, cards: ResearchCard[]): Promise<ResearchCard[]> {
   try {
     if (cards.length === 0) return [];
-    if (!window.ai || (await window.ai.canCreateTextSession()) === 'no') {
+    
+    // Use LanguageModel.availability() for a robust check before creating session
+    const availability = await LanguageModel.availability({ outputLanguage: 'en' });
+    if (availability === 'unavailable') {
       console.warn("Built-in AI is not available for querying. Performing simple text search.");
       return cards.filter(card => JSON.stringify(card).toLowerCase().includes(query.toLowerCase()));
     }
@@ -31,16 +37,16 @@ export async function queryCards(query: string, cards: ResearchCard[]): Promise<
 
     const fullPrompt = `${MASTER_PROMPT}\n\nUser Query: "${query}"\n\nResearch Cards JSON:\n${JSON.stringify(simplifiedCards, null, 2)}`;
     
-    const session = await window.ai.createTextSession();
-    const resultString = await session.prompt(fullPrompt);
+    const session = await LanguageModel.create({ outputLanguage: 'en' });
+    const resultString = await session.prompt(fullPrompt, { outputLanguage: 'en' }); // Added output_language
     session.destroy();
 
     if (!resultString) return [];
 
     const relevantIds = resultString
       .split(',')
-      .map(id => parseInt(id.trim(), 10))
-      .filter(id => !isNaN(id));
+      .map((id: string) => parseInt(id.trim(), 10))
+      .filter((id: number) => !isNaN(id));
 
     const relevantIdSet = new Set(relevantIds);
 

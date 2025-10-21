@@ -1,16 +1,21 @@
-import { useState } from 'react';
-import { NotebookView } from './components/NotebookView';
-import { DashboardView } from './components/DashboardView';
-import { WritingStudioView } from './components/WritingStudioView';
-import { Navigation } from './components/Navigation';
+console.log("App.tsx script parsed!");
+import { useState, useEffect } from 'react';
+// import reactLogo from './assets/react.svg'; // Removed unused import
+// import viteLogo from '/vite.svg'; // Removed unused import
 import './App.css';
+import { DashboardView } from './components/DashboardView';
+import { Navigation } from './components/Navigation';
+import { NotebookView } from './components/NotebookView';
+import { WritingStudioView } from './components/WritingStudioView';
+import { handleClippedContent } from './handlers/content-handler';
 import { analyzeImageProvenanceWithDB } from './ai/provenance';
 import { generateTagsForContentWithDB } from './ai/tagging';
 import { queryCardsFromDB } from './ai/query';
 import type { ProvenanceResult, ResearchCard, View } from './types';
 import { addCard, getCards, clearAllCards } from './db';
-import { useEffect } from 'react';
-import { handleClippedContent } from './handlers/content-handler';
+
+// Declare LanguageModel as a global type if not already declared
+declare const LanguageModel: any;
 
 interface SambitTestHarnessProps {
   allCards: ResearchCard[];
@@ -97,7 +102,23 @@ function App() {
   const [allCards, setAllCards] = useState<ResearchCard[]>([]);
   const [textCardId, setTextCardId] = useState<number | undefined>(undefined);
   const [imageCardId, setImageCardId] = useState<number | undefined>(undefined);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  const [pendingContentPayload, setPendingContentPayload] = useState<any | null>(null); // New state for pending content
 
+  // Helper function to process clipped content
+  const processClippedContent = (payload: any) => {
+    console.log("App.tsx: Attempting to process clipped content with payload:", payload);
+    handleClippedContent(payload)
+      .then(() => {
+        getCards().then(setAllCards);
+        console.log("App.tsx: Clipped content processed successfully.");
+      })
+      .catch((error) => {
+        console.error('App.tsx: Error handling clipped content in side panel:', error);
+      });
+  };
+
+  // Effect for initial data loading and AI availability check (runs once on mount)
   useEffect(() => {
     const loadInitialMockData = async () => {
       await clearAllCards();
@@ -116,28 +137,101 @@ function App() {
     };
     
     loadInitialMockData();
-  }, []); 
 
+    const checkAIAvailability = async () => {
+      console.log("App.tsx: Checking AI availability. window.ai:", window.ai);
+      const availability = await LanguageModel.availability({ outputLanguage: 'en' }); 
+      console.log("App.tsx: LanguageModel.availability() result:", availability);
+      const isAvailable = availability !== 'unavailable';
+      console.log("App.tsx: Setting aiAvailable to:", isAvailable);
+      setAiAvailable(isAvailable);
+    };
+
+    checkAIAvailability();
+  }, []); // Revert to empty dependency array to run only once on mount
+
+  // Effect for establishing and managing the port connection (runs once on mount)
   useEffect(() => {
-    const messageListener = (message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
-      if (message.type === 'SAVE_CLIPPED_CONTENT') {
-        console.log("Received SAVE_CLIPPED_CONTENT message:", message.payload);
-        handleClippedContent(message.payload).then(() => {
-          getCards().then(setAllCards);
+    let port: chrome.runtime.Port | undefined;
+
+    const connectAndIdentify = async () => {
+      if (chrome.runtime.id) {
+        // Get the active tab ID for the side panel's context
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        console.log("App.tsx: chrome.tabs.query result for connection:", tabs);
+        const currentTabId = tabs[0]?.id;
+        console.log("App.tsx: Derived currentTabId for port name:", currentTabId);
+
+        if (currentTabId === undefined) {
+          console.error("App.tsx: Could not determine currentTabId for port connection. Not connecting.");
+          return;
+        }
+
+        // Connect with a unique name based on the currentTabId
+        port = chrome.runtime.connect({ name: String(currentTabId) });
+        console.log("App.tsx: Connected to background script. Port name used:", port.name);
+
+        // The background script will listen for a connection and use port.name for identification.
+        // It will then send SET_SIDE_PANEL_CONTEXT_TAB_ID, and we will respond with SIDE_PANEL_READY.
+
+        port.onMessage.addListener((message) => {
+          console.log("App.tsx: Received message from background script:", message.type, ":", message);
+          if (message.type === 'SET_SIDE_PANEL_CONTEXT_TAB_ID') {
+            const receivedTabId: number = message.originalTabId;
+            console.log("App.tsx: Received SET_SIDE_PANEL_CONTEXT_TAB_ID with originalTabId:", receivedTabId);
+
+            // Now that we have the context tab ID, we can signal readiness to the background script
+            port?.postMessage({ type: 'SIDE_PANEL_READY', originalTabId: receivedTabId });
+            console.log("App.tsx: Sent SIDE_PANEL_READY with originalTabId:", receivedTabId);
+
+          } else if (message.type === 'INITIALIZE_SIDE_PANEL_WITH_CONTENT') {
+            console.log("App.tsx: Received INITIALIZE_SIDE_PANEL_WITH_CONTENT via port. Payload:", message.payload); // Log payload here
+            const { payload } = message; 
+            // Store this payload temporarily if AI is not yet available
+            if (aiAvailable === null || aiAvailable === false) {
+              // Defer processing if AI availability is not yet determined or is unavailable
+              setPendingContentPayload(payload); // Store the payload for later processing
+              console.warn("App.tsx: AI availability still loading or unavailable, deferring content processing.");
+              return;
+            }
+
+            console.log("App.tsx: AI is available, processing content immediately.", { aiAvailable, payload });
+            // Process immediately if AI is available
+            processClippedContent(payload);
+          }
         });
-        sendResponse({ status: 'processing' });
-        return true; 
+
+        port.onDisconnect.addListener(() => {
+          console.log("App.tsx: Disconnected from background script.");
+        });
       }
     };
-    chrome.runtime.onMessage.addListener(messageListener);
+
+    connectAndIdentify();
+
     return () => {
-      chrome.runtime.onMessage.removeListener(messageListener);
+      if (port) {
+        port.disconnect();
+      }
     };
-  }, []); 
+  }, []); // Revert to empty dependency array to run only once on mount
+
+  // New useEffect to handle deferred content processing once AI availability is confirmed
+  useEffect(() => {
+    if (aiAvailable === true && pendingContentPayload) {
+      console.log("App.tsx: AI is available and pending content exists. Processing deferred content.");
+      processClippedContent(pendingContentPayload);
+      setPendingContentPayload(null); // Clear the pending payload after processing
+    } else if (aiAvailable === false && pendingContentPayload) {
+      console.error("App.tsx: Built-in AI is unavailable. Cannot process deferred content.", pendingContentPayload);
+      setPendingContentPayload(null); // Clear pending payload if AI is unavailable
+    }
+  }, [aiAvailable, pendingContentPayload]);
+
   const renderView = () => {
     switch (currentView) {
       case 'Notebook':
-        return <NotebookView />;
+        return <NotebookView allCards={allCards} setAllCards={setAllCards} />;
       case 'Dashboard':
         return <DashboardView />;
       case 'WritingStudio':
@@ -145,7 +239,7 @@ function App() {
       case 'Dev':
         return <SambitTestHarness allCards={allCards} setAllCards={setAllCards} textCardId={textCardId} imageCardId={imageCardId} />;
       default:
-        return <NotebookView />;
+        return <NotebookView allCards={allCards} setAllCards={setAllCards} />;
     }
   };
 

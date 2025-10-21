@@ -2,7 +2,7 @@ import { openDB, type DBSchema } from 'idb';
 import type { ResearchCard } from '../types';
 
 const DB_NAME = 'CognitoDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Increment version to force upgrade
 const STORE_NAME = 'research-cards';
 
 interface CognitoDBSchema extends DBSchema {
@@ -52,7 +52,7 @@ export async function updateCard(card: ResearchCard): Promise<void> {
 }
 
 export async function clearAllCards(): Promise<void> {
-  const db = await openDB(DB_NAME, DB_VERSION);
+  const db = await initDB(); // Use initDB to ensure correct version and stores
   await db.clear(STORE_NAME);
   db.close();
 }

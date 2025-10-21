@@ -5,6 +5,7 @@
     "outDir": "dist",
     "target": "ES2020",
     "module": "ESNext",
+    "lib": ["ES2020", "WebWorker"],
     "types": ["chrome"]
   },
   "include": ["src/background.ts", "src/db/index.ts", "src/types/index.ts"]

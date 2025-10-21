@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "types": ["chrome", "vitest/globals"],
-    "moduleResolution": "bundler"
+    "moduleResolution": "bundler",
+    "skipLibCheck": true
   },
   "files": [],
   "references": [

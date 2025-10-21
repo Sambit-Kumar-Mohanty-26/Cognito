@@ -10,22 +10,26 @@ interface ClipPayload {
   sourcePageTitle: string;
 }
 
+// Declare LanguageModel as a global type if not already declared
+declare const LanguageModel: any; 
+
 export async function handleClippedContent(payload: ClipPayload): Promise<void> {
-  if (!window.ai || (await window.ai.canCreateTextSession()) === 'no') {
-    console.error("Built-in AI is not available. Cannot process and save content.");
-    return;
-  }
+  // The LanguageModel availability check is now handled at the entry point in App.tsx
 
   if (payload.menuItemId === 'save-selection-to-cognito' && payload.selectionText) {
     try {
       const content = payload.selectionText;
       const tags = await generateTagsForContent(content);
-      const summaryResult = await window.ai.summarize({ text: content });
+      
+      // Use LanguageModel.create() directly, assuming it's available in side panel context
+      const session = await LanguageModel.create({ outputLanguage: 'en' }); 
+      const summaryResult = await session.prompt(content, { outputLanguage: 'en' }); // Added output_language
+      session.destroy();
       
       await addCard({
         type: 'text',
         content,
-        summary: summaryResult.text,
+        summary: summaryResult,
         tags,
         sourceUrl: payload.sourcePageUrl,
         createdAt: Date.now(),

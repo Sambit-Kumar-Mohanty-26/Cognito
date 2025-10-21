@@ -1,6 +1,9 @@
 import type { ProvenanceResult, ProvenanceStatus, ResearchCard } from '../types';
 import { getCard, updateCard } from '../db';
 
+// Declare LanguageModel as a global type if not already declared
+declare const LanguageModel: any;
+
 const MASTER_PROMPT = `You are a world-class digital image forensic analyst. Your task is to analyze the provided image for any signs of digital alteration or AI generation. Be objective, technical, and precise.
 
 Examine the following forensic markers:
@@ -23,14 +26,17 @@ Forensic Findings:
 
 export async function analyzeImageProvenance(imageBlob: Blob): Promise<ProvenanceResult> {
   try {
-    if (!window.ai || (await window.ai.canCreateTextSession()) === 'no') {
+    // Use LanguageModel.availability() for a robust check before creating session
+    const availability = await LanguageModel.availability({ outputLanguage: 'en' });
+    if (availability === 'unavailable') {
       console.warn("Built-in AI is not available for provenance. Using mock data.");
       return new Promise(resolve => setTimeout(() => resolve({ status: 'caution-advised', findings: 'Mock analysis: This is a placeholder result because the Built-in AI is not active in this browser.' }), 1000));
     }
 
-    const session = await window.ai.createTextSession();
-    const resultString = await session.prompt(MASTER_PROMPT, { image: imageBlob });
+    const session = await LanguageModel.create({ outputLanguage: 'en' });
+    const resultString = await session.prompt(MASTER_PROMPT, { image: imageBlob, outputLanguage: 'en' }); // Added output_language
     session.destroy();
+
     const parts = resultString.split('---');
     if (parts.length < 2) {
       return { status: 'unverified', findings: "AI response was not in the expected format.\n\n" + resultString };
@@ -58,12 +64,13 @@ export async function analyzeImageProvenance(imageBlob: Blob): Promise<Provenanc
     };
   }
 }
+
 async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
-    const response = await fetch(dataUrl);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch data URL: ${response.statusText}`);
-    }
-    return await response.blob();
+  const response = await fetch(dataUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch data URL: ${response.statusText}`);
+  }
+  return await response.blob();
 }
 
 export async function analyzeImageProvenanceWithDB(cardId: number): Promise<void> {
