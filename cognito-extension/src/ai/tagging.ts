@@ -1,6 +1,8 @@
 import type { ResearchCard } from "../types";
 import { getCard, updateCard } from '../db';
 
+declare const LanguageModel: any;
+
 const MASTER_PROMPT = `You are a highly intelligent content analysis engine. Your task is to extract the most relevant keywords and concepts from the provided text to be used as organizational tags.
 
 Follow these rules strictly:
@@ -13,12 +15,12 @@ Follow these rules strictly:
 
 export async function generateTagsForContent(content: string): Promise<string[]> {
   try {
-    if (!window.ai || (await window.ai.canCreateTextSession()) === 'no') {
+    if ((await LanguageModel.availability({ outputLanguage: 'en' })) === 'unavailable') {
       console.warn("Built-in AI is not available for tagging. Using mock data.");
       return ['mock-tag', 'placeholder'];
     }
 
-    const session = await window.ai.createTextSession();
+    const session = await LanguageModel.create({ outputLanguage: 'en' });
     const resultString = await session.prompt(`${MASTER_PROMPT}\n\nText to analyze:\n"""\n${content}\n"""`);
     session.destroy();
 
@@ -26,8 +28,8 @@ export async function generateTagsForContent(content: string): Promise<string[]>
     
     return resultString
       .split(',')
-      .map(tag => tag.trim())
-      .filter(tag => tag.length > 0); 
+      .map((tag: string) => tag.trim())
+      .filter((tag: string) => tag.length > 0); 
 
   } catch (error) {
     console.error("Tag generation failed:", error);
